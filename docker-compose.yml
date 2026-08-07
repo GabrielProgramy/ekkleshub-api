@@ -1,0 +1,34 @@
+services:
+  database:
+    image: postgres:17-alpine
+    container_name: hub_database
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 2s
+      timeout: 10s
+      retries: 2
+  api:
+    build: .
+    container_name: ekkleshub_api
+    ports:
+      - 3000:3000
+    environment:
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
