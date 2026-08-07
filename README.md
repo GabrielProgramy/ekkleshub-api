@@ -30,33 +30,85 @@ Atualmente, o projeto está na fase de configuração da estrutura inicial da AP
 
 ## Como executar
 
-### Pré-requisitos
+Para a instalação e execução temos dois caminhos, um via Docker que é o mais recomendado e um para execução local sem Docker.
+
+
+### Opção recomendada: Docker
+
+#### Pré-requisitos
+- Docker
+- Docker Compose
+- Git
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/GabrielProgramy/ekkleshub-api.git
+```
+2. Entre na pasta do projeto:
+```bash
+cd ekkleshub-api
+```
+3. Crie um arquivo .env a partir do .env.example.
+   
+4. Preencha as variáveis
+   
+5. Rode o comando para iniciar os serviços relacionados ao projeto (Banco e API):
+```bash
+docker compose up --build
+```
+A API só será iniciada após o banco de dados ficar saudável (healthy).
+
+6. Para iniciar novamente containers já criados:
+```bash
+docker compose start
+```
+Para parar a execução use:
+```bash
+docker compose stop
+```
+
+7. Caso deseje encerrar o sistema, use o comando: 
+```bash
+docker compose down
+```
+
+
+### Execução local sem Docker
+
+#### Pré-requisitos
 
 - Node.js
 - npm
+- PostgreSQL
+- Git
 
-### Instalação
-
-Clone o repositório:
+1. Clone o repositório:
 
 ```bash
 git clone https://github.com/GabrielProgramy/ekkleshub-api.git
 ```
-Entre na pasta do projeto:
+2. Entre na pasta do projeto:
 ```bash
 cd ekkleshub-api
 ```
-Instale as dependências:
+3. Instale as dependências:
 ```bash
 npm install
 ```
-Execute em modo de desenvolvimento:
+4. Crie um arquivo .env a partir do .env.example.
+   
+5. Preencha as variáveis
+   
+6. Execute em modo de desenvolvimento:
 ```bash
 npm run start:dev
 ```
-A aplicação estará disponível em:
-
+7. A aplicação estará disponível em:
 	http://localhost:3000
+
+#### Observações
+- Para utilizar o sistema terá que ter uma instância do Postgres rodando localmente;
+- As credenciais e o nome do banco configurados no PostgreSQL devem corresponder às variáveis definidas no .env.
 
 ### Funcionalidades disponíveis
 - Endpoint de verificação de saúde da API
