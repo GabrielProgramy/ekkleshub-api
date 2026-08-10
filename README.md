@@ -130,9 +130,9 @@ O projeto está utilizando TypeORM para a persistência de dados e controle de m
 
 Para rodar as migrations use os comandos abaixo:
 
-- `npm run migrate:show` -> Lista as migrations e seus estados;
-- `npm run migrate:run` -> Executa migrations pendentes;
-- `npm run migrate:revert` -> Reverte a última migration executada
+- `npm run migration:show` -> Lista as migrations e seus estados;
+- `npm run migration:run` -> Executa migrations pendentes;
+- `npm run migration:revert` -> Reverte a última migration executada
 
 O projeto está usando migrations para realizar qualquer alteração no schema.
 
