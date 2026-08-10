@@ -122,6 +122,34 @@ npm run start:dev
 
 O desenvolvimento do projeto é organizado utilizando issues, branches e pull requests.
 
+### Migrations
+
+O projeto está utilizando TypeORM para a persistência de dados e controle de migrations.
+
+#### Comandos
+
+Para rodar as migrations use os comandos abaixo:
+
+- `npm run migration:show` -> Lista as migrations e seus estados;
+- `npm run migration:run` -> Executa migrations pendentes;
+- `npm run migration:revert` -> Reverte a última migration executada
+
+O projeto está usando migrations para realizar qualquer alteração no schema.
+
+### Acesso aos dados
+
+O acesso aos dados será feito utilizando os repositórios fornecidos pelo TypeORM.
+
+O padrão adotado no MVP será:
+
+Controller → Service → Repository (TypeORM) → Banco de dados
+
+- O Controller será responsável por receber as requisições e retornar as respostas;
+- O Service concentrará as regras de negócio;
+- O Repository será responsável pela comunicação com o banco de dados.
+
+Inicialmente não serão criados repositórios customizados. Essa abstração poderá ser adicionada futuramente caso o projeto passe a exigir consultas mais complexas ou maior isolamento da camada de persistência. 
+
 ## Licença
 
 Este projeto está licenciado sob a licença MIT.
