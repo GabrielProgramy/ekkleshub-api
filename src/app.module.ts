@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ChurchModule } from './church/church.module';
 
 @Module({
 	imports: [
@@ -24,6 +25,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 				synchronize: false,
 			}),
 		}),
+
+		ChurchModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
