@@ -10,7 +10,7 @@ export class Address {
 	@Column()
 	state: string;
 	@Column({ type: 'varchar', nullable: true })
-	complement: string | null;
+	complement?: string | null;
 	@Column()
 	zip_code: string;
 }
