@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { Church } from '../church/entities/church.entity';
 import { DataSource } from 'typeorm';
 
 export const AppDataSource = new DataSource({
@@ -8,7 +9,7 @@ export const AppDataSource = new DataSource({
 	username: process.env.DB_USER,
 	password: process.env.DB_PASSWORD,
 	database: process.env.DB_NAME,
-	entities: [],
+	entities: [Church],
 	migrations: ['src/database/migrations/*.ts'],
 	synchronize: false,
 });
