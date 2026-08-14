@@ -70,6 +70,35 @@ describe('ChurchService', () => {
 		);
 	});
 
+	it('deve permitir a criação de uma congregação sem consultar a existência de uma matriz duplicada', async () => {
+		const congregationData: CreateChurchDto = {
+			name: 'Igreja Teste Congregação',
+			address: {
+				city: 'São Paulo',
+				number: '20',
+				street: 'Rua Alguma coisa',
+				state: 'SP',
+				zip_code: '00022001',
+			},
+			type: ChurchType.CONGREGATION,
+		};
+
+		mockChurchRepository.save.mockResolvedValue({
+			...congregationData,
+			id: 'uuid-teste-congregacao',
+			status: ChurchStatus.ACTIVE,
+			created_at: new Date(),
+			updated_at: new Date(),
+		});
+
+		const result = await service.create(congregationData);
+
+		expect(result.type).toEqual(ChurchType.CONGREGATION);
+		expect(result.status).toEqual(ChurchStatus.ACTIVE);
+		expect(mockChurchRepository.exists).not.toHaveBeenCalled();
+		expect(mockChurchRepository.save).toHaveBeenCalled();
+	});
+
 	it('deve permitir a criação de uma igreja matriz', async () => {
 		mockChurchRepository.exists.mockResolvedValue(false);
 
@@ -149,5 +178,36 @@ describe('ChurchService', () => {
 
 		expect(existingChurchTest.status).toEqual(ChurchStatus.CLOSED);
 		expect(mockChurchRepository.save).toHaveBeenCalledWith(existingChurchTest);
+	});
+
+	it('deve listar as igrejas registradas', async () => {
+		const churches: Church[] = [
+			existingChurchTest,
+			{
+				...existingChurchTest,
+				id: 'uuid-teste-2',
+				name: 'Igreja Teste 2',
+				type: ChurchType.CONGREGATION,
+			},
+		];
+		mockChurchRepository.find.mockResolvedValue(churches);
+
+		const result = await service.findAll();
+
+		expect(result).toEqual(churches);
+		expect(mockChurchRepository.find).toHaveBeenCalled();
+	});
+
+	it('deve ignorar o encerramento de uma igreja já fechada', async () => {
+		const closedChurch: Church = {
+			...existingChurchTest,
+			status: ChurchStatus.CLOSED,
+		};
+
+		mockChurchRepository.findOne.mockResolvedValue(closedChurch);
+
+		await service.close('uuid-teste');
+
+		expect(mockChurchRepository.save).not.toHaveBeenCalled();
 	});
 });
