@@ -170,11 +170,13 @@ describe('AccessProfileService', () => {
 		);
 	});
 
-	it('deve lanaçar um erro caso o nome do perfil de acesso a ser atualizado já exista', async () => {
+	it('deve lançar um erro caso o nome do perfil de acesso a ser atualizado já exista', async () => {
 		const updatedDataAccessProfile: UpdateAccessProfileDto = {
 			name: 'ADMIN',
 		};
-
+		mockAccessProfileRepository.findOne.mockResolvedValue(
+			existingAccessProfileData,
+		);
 		mockAccessProfileRepository.exists.mockResolvedValue(true);
 
 		await expect(
