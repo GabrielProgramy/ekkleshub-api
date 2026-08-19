@@ -81,7 +81,7 @@ export class AccessProfileService {
 		return existingAccessProfile;
 	}
 
-	async delete(accessProfileId: string): Promise<void> {
+	async deleteOne(accessProfileId: string): Promise<void> {
 		await this.accessProfileRepository.delete(accessProfileId);
 	}
 }

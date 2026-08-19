@@ -183,7 +183,7 @@ describe('AccessProfileService', () => {
 	});
 
 	it('deve solicitar a exclusão de um perfil de acesso pelo id', async () => {
-		await service.delete('uuid-teste');
+		await service.deleteOne('uuid-teste');
 
 		expect(mockAccessProfileRepository.delete).toHaveBeenCalledWith(
 			'uuid-teste',
