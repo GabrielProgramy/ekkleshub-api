@@ -29,7 +29,7 @@ export class AccessProfile {
 	name: string;
 
 	@Column({ type: 'jsonb' })
-	permission: Permission;
+	permissions: Permission;
 
 	@CreateDateColumn()
 	created_at: Date;
