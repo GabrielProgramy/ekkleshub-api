@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AccessProfileController } from './access-profile.controller';
 import { AccessProfileService } from './access-profile.service';
 import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
-import { AccessProfile } from './entities/access-profile.entity';
+import {
+	AccessProfile,
+	PermissionLevel,
+	PermissionScope,
+} from './entities/access-profile.entity';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
 
 describe('AccessProfileController', () => {
@@ -41,12 +45,30 @@ describe('AccessProfileController', () => {
 		const newAccessProfileData: CreateAccessProfileDto = {
 			name: 'OWNER',
 			permissions: {
-				ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
-				AUDIT: { permission: 'FULL', scope: 'GLOBAL' },
-				CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-				MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-				PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-				USERS: { permission: 'FULL', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				AUDIT: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				CHURCHES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				MEMBERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				PASTORAL_LEADERSHIP: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				USERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 		};
 
@@ -73,12 +95,30 @@ describe('AccessProfileController', () => {
 				id: 'uuid-teste',
 				name: 'OWNER',
 				permissions: {
-					ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
-					AUDIT: { permission: 'FULL', scope: 'GLOBAL' },
-					CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-					MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-					PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-					USERS: { permission: 'FULL', scope: 'GLOBAL' },
+					ACCESS_PROFILES: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					AUDIT: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					CHURCHES: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					MEMBERS: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					PASTORAL_LEADERSHIP: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					USERS: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
 				},
 				created_at: new Date(),
 				updated_at: new Date(),
@@ -87,12 +127,30 @@ describe('AccessProfileController', () => {
 				id: 'uuid-teste-2',
 				name: 'ADMIN',
 				permissions: {
-					ACCESS_PROFILES: { permission: 'READ', scope: 'GLOBAL' },
-					AUDIT: { permission: 'NONE', scope: 'GLOBAL' },
-					CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-					MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-					PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-					USERS: { permission: 'FULL', scope: 'GLOBAL' },
+					ACCESS_PROFILES: {
+						permission: PermissionLevel.READ,
+						scope: PermissionScope.GLOBAL,
+					},
+					AUDIT: {
+						permission: PermissionLevel.NONE,
+						scope: PermissionScope.GLOBAL,
+					},
+					CHURCHES: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					MEMBERS: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					PASTORAL_LEADERSHIP: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
+					USERS: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.GLOBAL,
+					},
 				},
 				created_at: new Date(),
 				updated_at: new Date(),
@@ -114,12 +172,30 @@ describe('AccessProfileController', () => {
 			id: accessProfileId,
 			name: 'OWNER',
 			permissions: {
-				ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
-				AUDIT: { permission: 'FULL', scope: 'GLOBAL' },
-				CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-				MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-				PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-				USERS: { permission: 'FULL', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				AUDIT: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				CHURCHES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				MEMBERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				PASTORAL_LEADERSHIP: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				USERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 			created_at: new Date(),
 			updated_at: new Date(),
@@ -142,12 +218,30 @@ describe('AccessProfileController', () => {
 			id: accessProfileId,
 			name: 'ADMIN',
 			permissions: {
-				ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
-				AUDIT: { permission: 'FULL', scope: 'GLOBAL' },
-				CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-				MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-				PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-				USERS: { permission: 'FULL', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				AUDIT: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				CHURCHES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				MEMBERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				PASTORAL_LEADERSHIP: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				USERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 			created_at: new Date(),
 			updated_at: new Date(),
@@ -155,7 +249,10 @@ describe('AccessProfileController', () => {
 
 		const updateData: UpdateAccessProfileDto = {
 			permissions: {
-				ACCESS_PROFILES: { permission: 'READ', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 		};
 

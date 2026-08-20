@@ -55,16 +55,16 @@ export class AccessProfileService {
 
 	async update(
 		accessProfileId: string,
-		updateData: UpdateAccessProfileDto,
+		{ name, permissions }: UpdateAccessProfileDto,
 	): Promise<AccessProfile> {
 		const existingAccessProfile = await this.findOneOrFail(accessProfileId);
 
-		if (updateData.name) {
+		if (name) {
 			const existingAccessProfileName =
 				await this.accessProfileRepository.exists({
 					where: {
 						id: Not(accessProfileId),
-						name: updateData.name,
+						name: name,
 					},
 				});
 
@@ -72,9 +72,16 @@ export class AccessProfileService {
 				throw new ConflictException(
 					'O nome do perfil de acesso já está cadastrado!',
 				);
+
+			existingAccessProfile.name = name;
 		}
 
-		this.accessProfileRepository.merge(existingAccessProfile, updateData);
+		if (permissions) {
+			existingAccessProfile.permissions = {
+				...existingAccessProfile.permissions,
+				...permissions,
+			};
+		}
 
 		await this.accessProfileRepository.save(existingAccessProfile);
 

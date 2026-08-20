@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AccessProfileService } from './access-profile.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { AccessProfile } from './entities/access-profile.entity';
+import {
+	AccessProfile,
+	PermissionLevel,
+	PermissionScope,
+} from './entities/access-profile.entity';
 import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
@@ -13,7 +17,6 @@ describe('AccessProfileService', () => {
 		save: jest.Mock;
 		find: jest.Mock;
 		findOne: jest.Mock;
-		merge: jest.Mock;
 		delete: jest.Mock;
 	};
 	let createAccessProfileData: CreateAccessProfileDto;
@@ -25,19 +28,36 @@ describe('AccessProfileService', () => {
 			save: jest.fn(),
 			find: jest.fn(),
 			findOne: jest.fn(),
-			merge: jest.fn(),
 			delete: jest.fn(),
 		};
 
 		createAccessProfileData = {
 			name: 'OWNER',
 			permissions: {
-				ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
-				CHURCHES: { permission: 'FULL', scope: 'GLOBAL' },
-				AUDIT: { permission: 'FULL', scope: 'GLOBAL' },
-				MEMBERS: { permission: 'FULL', scope: 'GLOBAL' },
-				PASTORAL_LEADERSHIP: { permission: 'FULL', scope: 'GLOBAL' },
-				USERS: { permission: 'FULL', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				CHURCHES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				AUDIT: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				MEMBERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				PASTORAL_LEADERSHIP: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
+				USERS: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 		};
 
@@ -81,6 +101,7 @@ describe('AccessProfileService', () => {
 		});
 		expect(mockAccessProfileRepository.save).toHaveBeenCalled();
 	});
+
 	it('deve impedir a criação de um perfil de acesso com nome já existente', async () => {
 		mockAccessProfileRepository.exists.mockResolvedValue(true);
 
@@ -132,41 +153,44 @@ describe('AccessProfileService', () => {
 	});
 
 	it('deve permitir a atualização de dados de um perfil de acesso', async () => {
+		const accessProfileId = 'uuid-teste';
+
 		const updatedDataAccessProfile: UpdateAccessProfileDto = {
 			name: 'ADMIN',
 			permissions: {
-				ACCESS_PROFILES: { permission: 'FULL', scope: 'GLOBAL' },
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.FULL,
+					scope: PermissionScope.GLOBAL,
+				},
 			},
 		};
 
-		const mergedDataAccessProfile = {
+		const expectedAccessProfile: AccessProfile = {
 			...existingAccessProfileData,
-			...updatedDataAccessProfile,
+			name: 'ADMIN',
+			permissions: {
+				...existingAccessProfileData.permissions,
+				...updatedDataAccessProfile.permissions,
+			},
 		};
 
 		mockAccessProfileRepository.findOne.mockResolvedValue(
 			existingAccessProfileData,
 		);
 
-		mockAccessProfileRepository.merge.mockImplementation(
-			(exiting: AccessProfile, updateData: UpdateAccessProfileDto) => {
-				Object.assign(exiting, updateData);
+		mockAccessProfileRepository.exists.mockResolvedValue(false);
 
-				return exiting;
-			},
-		);
+		mockAccessProfileRepository.save.mockResolvedValue(expectedAccessProfile);
 
-		mockAccessProfileRepository.save.mockResolvedValue(mergedDataAccessProfile);
-
-		const result = await service.update('uuid-teste', updatedDataAccessProfile);
-
-		expect(result).toEqual(mergedDataAccessProfile);
-		expect(mockAccessProfileRepository.merge).toHaveBeenCalledWith(
-			existingAccessProfileData,
+		const result = await service.update(
+			accessProfileId,
 			updatedDataAccessProfile,
 		);
+
+		expect(result).toEqual(expectedAccessProfile);
+
 		expect(mockAccessProfileRepository.save).toHaveBeenCalledWith(
-			existingAccessProfileData,
+			expectedAccessProfile,
 		);
 	});
 
