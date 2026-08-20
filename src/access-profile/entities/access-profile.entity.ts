@@ -7,25 +7,38 @@ import {
 } from 'typeorm';
 
 type ModulePermission = {
-	permission: 'FULL' | 'READ' | 'NONE';
-	scope: 'GLOBAL' | 'OWN_CHURCH';
+	permission: PermissionLevel;
+	scope: PermissionScope;
 };
 
-type Permission = {
-	CHURCHES: ModulePermission;
-	MEMBERS: ModulePermission;
-	USERS: ModulePermission;
-	ACCESS_PROFILES: ModulePermission;
-	PASTORAL_LEADERSHIP: ModulePermission;
-	AUDIT: ModulePermission;
-};
+export enum PermissionModule {
+	CHURCHES = 'CHURCHES',
+	MEMBERS = 'MEMBERS',
+	USERS = 'USERS',
+	ACCESS_PROFILES = 'ACCESS_PROFILES',
+	PASTORAL_LEADERSHIP = 'PASTORAL_LEADERSHIP',
+	AUDIT = 'AUDIT',
+}
+
+export enum PermissionLevel {
+	FULL = 'FULL',
+	READ = 'READ',
+	NONE = 'NONE',
+}
+
+export enum PermissionScope {
+	GLOBAL = 'GLOBAL',
+	OWN_CHURCH = 'OWN_CHURCH',
+}
+
+type Permission = Record<PermissionModule, ModulePermission>;
 
 @Entity()
 export class AccessProfile {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column()
+	@Column({ unique: true })
 	name: string;
 
 	@Column({ type: 'jsonb' })
