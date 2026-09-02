@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Users } from './entities/users.entity';
 import { AccessProfileService } from '../access-profile/access-profile.service';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -59,41 +60,97 @@ describe('UsersService', () => {
 
 		service = module.get<UsersService>(UsersService);
 	});
+	describe('Criação de usuário', () => {
+		it('deve ser possível cadastrar um usuário com perfil válido', async () => {
+			const userDataCreated = {
+				name: 'John Doe',
+				email: 'johndoe@email.com',
+				password: '12345678',
+				access_profile: 'uuid-admin',
+			};
 
-	it('deve ser possível cadastrar um usuário com perfil válido', async () => {
-		const userDataCreated = {
-			name: 'John Doe',
-			email: 'johndoe@email.com',
-			password: '12345678',
-			access_profile: 'uuid-admin',
-		};
+			mockAccessProfileService.findOneOrFail.mockResolvedValue({
+				id: 'uuid-admin',
+				name: 'ADMIN',
+			});
 
-		mockAccessProfileService.findOneOrFail.mockResolvedValue({
-			id: 'uuid-admin',
-			name: 'ADMIN',
+			mockUsersRepository.exists.mockResolvedValue(false);
+
+			mockUsersRepository.save.mockResolvedValue({
+				...userDataCreated,
+				id: 'uuid-admin',
+				status: 'ACTIVE',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const result = await service.create(userDataCreated);
+
+			expect(result.status).toBe('ACTIVE');
+			expect(mockUsersRepository.exists).toHaveBeenCalledWith({
+				where: { email: 'johndoe@email.com' },
+			});
+			expect(mockAccessProfileService.findOneOrFail).toHaveBeenCalledWith(
+				'uuid-admin',
+			);
+			expect(mockUsersRepository.save).toHaveBeenCalled();
 		});
 
-		mockUsersRepository.exists.mockResolvedValue(false);
+		it('deve impedir o cadastro de um usuário quando o email já estiver cadastrado', async () => {
+			const userDataCreated = {
+				name: 'John Doe',
+				email: 'johndoe@email.com',
+				password: '12345678',
+				access_profile: 'uuid-admin',
+			};
 
-		mockUsersRepository.save.mockResolvedValue({
-			...userDataCreated,
-			id: 'uuid-admin',
-			status: 'ACTIVE',
-			createdAt: new Date(),
-			updatedAt: new Date(),
+			mockUsersRepository.exists.mockResolvedValue(true);
+
+			await expect(service.create(userDataCreated)).rejects.toThrow(
+				ConflictException,
+			);
 		});
 
-		const result = await service.create(userDataCreated);
+		it('deve impedir o cadastro de um usuário quando o perfil não existir', async () => {
+			const userDataCreated = {
+				name: 'John Doe',
+				email: 'johndoe@email.com',
+				password: '12345678',
+				access_profile: 'uuid-admin',
+			};
 
-		expect(result.status).toBe('ACTIVE');
-		expect(mockUsersRepository.exists).toHaveBeenCalledWith({
-			where: { email: 'johndoe@email.com' },
+			mockAccessProfileService.findOneOrFail.mockRejectedValue(
+				new NotFoundException('O perfil de acesso não existe!'),
+			);
+
+			await expect(service.create(userDataCreated)).rejects.toThrow(
+				NotFoundException,
+			);
 		});
-		expect(mockAccessProfileService.findOneOrFail).toHaveBeenCalledWith(
-			'uuid-user',
-		);
-		expect(mockUsersRepository.save).toHaveBeenCalled();
+
+		it('não deve permitir criar um segundo usuário com perfil OWNER', async () => {
+			const createUserOwner = {
+				name: 'John Doe',
+				email: 'johndoe@email.com',
+				password: 'hash_senha',
+				access_profile_id: 'uuid-owner',
+			};
+
+			mockUsersRepository.exists
+				.mockResolvedValue(false)
+				.mockResolvedValue(true);
+
+			mockAccessProfileService.findOneOrFail.mockResolvedValue({
+				id: 'uuid-owner',
+				name: 'OWNER',
+			});
+
+			await expect(service.create(createUserOwner)).rejects.toThrow(
+				ConflictException,
+			);
+		});
 	});
+
 	it('deve ser possível buscar um usuário pelo seu id', async () => {
 		mockUsersRepository.findOne.mockResolvedValue(userData);
 
