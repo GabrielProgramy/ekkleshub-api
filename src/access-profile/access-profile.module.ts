@@ -8,5 +8,6 @@ import { AccessProfile } from './entities/access-profile.entity';
 	imports: [TypeOrmModule.forFeature([AccessProfile])],
 	controllers: [AccessProfileController],
 	providers: [AccessProfileService],
+	exports: [AccessProfileService],
 })
 export class AccessProfileModule {}
