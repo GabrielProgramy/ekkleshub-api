@@ -4,6 +4,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Users } from './entities/users.entity';
 import { AccessProfileService } from '../access-profile/access-profile.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { PasswordHasher } from '../common/security/password-hasher';
+import { Not } from 'typeorm';
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -19,6 +21,9 @@ describe('UsersService', () => {
 	let mockAccessProfileService: {
 		findOneOrFail: jest.Mock;
 	};
+	let mockPasswordHasher: {
+		hash: jest.Mock;
+	};
 
 	beforeEach(async () => {
 		mockUsersRepository = {
@@ -31,6 +36,9 @@ describe('UsersService', () => {
 
 		mockAccessProfileService = {
 			findOneOrFail: jest.fn(),
+		};
+		mockPasswordHasher = {
+			hash: jest.fn().mockResolvedValue('senha_com_hash'),
 		};
 
 		userData = {
@@ -55,6 +63,10 @@ describe('UsersService', () => {
 					provide: AccessProfileService,
 					useValue: mockAccessProfileService,
 				},
+				{
+					provide: PasswordHasher,
+					useValue: mockPasswordHasher,
+				},
 			],
 		}).compile();
 
@@ -66,7 +78,7 @@ describe('UsersService', () => {
 				name: 'John Doe',
 				email: 'johndoe@email.com',
 				password: '12345678',
-				access_profile: 'uuid-admin',
+				access_profile_id: 'uuid-admin',
 			};
 
 			mockAccessProfileService.findOneOrFail.mockResolvedValue({
@@ -85,6 +97,8 @@ describe('UsersService', () => {
 			});
 
 			const result = await service.create(userDataCreated);
+			const saveCalls = mockUsersRepository.save.mock.calls as Array<[Users]>;
+			const savedUser = saveCalls[0][0];
 
 			expect(result.status).toBe('ACTIVE');
 			expect(mockUsersRepository.exists).toHaveBeenCalledWith({
@@ -93,7 +107,42 @@ describe('UsersService', () => {
 			expect(mockAccessProfileService.findOneOrFail).toHaveBeenCalledWith(
 				'uuid-admin',
 			);
-			expect(mockUsersRepository.save).toHaveBeenCalled();
+			expect(savedUser).toEqual(
+				expect.objectContaining({
+					name: userDataCreated.name,
+					email: userDataCreated.email,
+					access_profile_id: 'uuid-admin',
+					status: 'ACTIVE',
+				}),
+			);
+		});
+
+		it('deve gerar um hash de senha', async () => {
+			const createUserData = {
+				name: 'John Doe',
+				email: 'johndoe@email.com',
+				password: '12345678',
+				access_profile_id: 'uuid-admin',
+			};
+			const generatedPasswordHash = '$2b$10$senha-transformada-em-hash';
+
+			mockUsersRepository.exists.mockResolvedValue(false);
+			mockAccessProfileService.findOneOrFail.mockResolvedValue({
+				id: 'uuid-admin',
+				name: 'ADMIN',
+			});
+			mockPasswordHasher.hash.mockResolvedValue(generatedPasswordHash);
+
+			await service.create(createUserData);
+
+			const saveCalls = mockUsersRepository.save.mock.calls as Array<[Users]>;
+			const savedUser = saveCalls[0][0];
+
+			expect(mockPasswordHasher.hash).toHaveBeenCalledWith(
+				createUserData.password,
+			);
+			expect(savedUser.password).toBe(generatedPasswordHash);
+			expect(savedUser.password).not.toBe(createUserData.password);
 		});
 
 		it('deve impedir o cadastro de um usuário quando o email já estiver cadastrado', async () => {
@@ -101,7 +150,7 @@ describe('UsersService', () => {
 				name: 'John Doe',
 				email: 'johndoe@email.com',
 				password: '12345678',
-				access_profile: 'uuid-admin',
+				access_profile_id: 'uuid-admin',
 			};
 
 			mockUsersRepository.exists.mockResolvedValue(true);
@@ -116,7 +165,7 @@ describe('UsersService', () => {
 				name: 'John Doe',
 				email: 'johndoe@email.com',
 				password: '12345678',
-				access_profile: 'uuid-admin',
+				access_profile_id: 'uuid-admin',
 			};
 
 			mockAccessProfileService.findOneOrFail.mockRejectedValue(
@@ -137,8 +186,8 @@ describe('UsersService', () => {
 			};
 
 			mockUsersRepository.exists
-				.mockResolvedValue(false)
-				.mockResolvedValue(true);
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(true);
 
 			mockAccessProfileService.findOneOrFail.mockResolvedValue({
 				id: 'uuid-owner',
@@ -148,6 +197,10 @@ describe('UsersService', () => {
 			await expect(service.create(createUserOwner)).rejects.toThrow(
 				ConflictException,
 			);
+			expect(mockUsersRepository.exists).toHaveBeenNthCalledWith(2, {
+				where: { access_profile_id: 'uuid-owner' },
+			});
+			expect(mockUsersRepository.save).not.toHaveBeenCalled();
 		});
 	});
 
@@ -157,7 +210,17 @@ describe('UsersService', () => {
 		const result = await service.findOneOrFail('uuid-teste');
 
 		expect(result).toEqual(userData);
-		expect(mockUsersRepository.findOne).toHaveBeenCalledWith('uuid-teste');
+		expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'uuid-teste' },
+		});
+	});
+
+	it('deve emitir um erro quando o usuário não existir', async () => {
+		mockUsersRepository.findOne.mockResolvedValue(null);
+
+		await expect(service.findOneOrFail('uuid-inexistente')).rejects.toThrow(
+			NotFoundException,
+		);
 	});
 
 	it('deve listar todos os usuários cadastrados', async () => {
@@ -168,33 +231,82 @@ describe('UsersService', () => {
 		expect(result).toEqual([userData]);
 	});
 
-	it('deve ser possível atualizar um usuário', async () => {
-		const updatedDataUser = {
-			email: 'johndoe2@email.com',
-		};
+	describe('Atualização de usuário', () => {
+		it('deve ser possível atualizar um usuário', async () => {
+			const updatedDataUser = {
+				email: 'johndoe2@email.com',
+			};
 
-		const mergedDataUser = {
-			...userData,
-			...updatedDataUser,
-		};
+			const mergedDataUser = {
+				...userData,
+				...updatedDataUser,
+			};
 
-		mockUsersRepository.findOne.mockResolvedValue(userData);
-		mockUsersRepository.merge.mockImplementation((existing: Users, updated) => {
-			Object.assign(existing, updated);
+			mockUsersRepository.findOne.mockResolvedValue(userData);
+			mockUsersRepository.exists.mockResolvedValue(false);
+			mockUsersRepository.merge.mockImplementation(
+				(existing: Users, updated) => {
+					Object.assign(existing, updated);
 
-			return existing;
+					return existing;
+				},
+			);
+
+			mockUsersRepository.save.mockResolvedValue(mergedDataUser);
+
+			const result = await service.update('uuid-teste', updatedDataUser);
+
+			expect(result).toEqual(mergedDataUser);
+			expect(mockUsersRepository.merge).toHaveBeenCalledWith(
+				userData,
+				updatedDataUser,
+			);
+			expect(mockUsersRepository.save).toHaveBeenCalledWith(mergedDataUser);
 		});
 
-		mockUsersRepository.save.mockResolvedValue(mergedDataUser);
+		it('não deve permitir a atualização para um email existente', async () => {
+			const updatedDataUser = {
+				email: 'existing@email.com',
+			};
 
-		const result = await service.update('uuid-teste', updatedDataUser);
+			mockUsersRepository.findOne.mockResolvedValue(userData);
+			mockUsersRepository.exists.mockResolvedValue(true);
 
-		expect(result).toEqual(mergedDataUser);
-		expect(mockUsersRepository.merge).toHaveBeenCalledWith(
-			userData,
-			updatedDataUser,
-		);
-		expect(mockUsersRepository.save).toHaveBeenCalledWith(mergedDataUser);
+			await expect(
+				service.update('uuid-teste', updatedDataUser),
+			).rejects.toThrow(ConflictException);
+			expect(mockUsersRepository.exists).toHaveBeenCalledWith({
+				where: {
+					id: Not('uuid-teste'),
+					email: 'existing@email.com',
+				},
+			});
+			expect(mockUsersRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('não deve permitir a atualização de um usuário para um perfil OWNER existente', async () => {
+			const updatedDataUser = {
+				access_profile_id: 'uuid-owner',
+			};
+
+			mockUsersRepository.findOne.mockResolvedValue(userData);
+			mockAccessProfileService.findOneOrFail.mockResolvedValue({
+				id: 'uuid-owner',
+				name: 'OWNER',
+			});
+			mockUsersRepository.exists.mockResolvedValue(true);
+
+			await expect(
+				service.update('uuid-teste', updatedDataUser),
+			).rejects.toThrow(ConflictException);
+			expect(mockAccessProfileService.findOneOrFail).toHaveBeenCalledWith(
+				'uuid-owner',
+			);
+			expect(mockUsersRepository.exists).toHaveBeenCalledWith({
+				where: { access_profile_id: 'uuid-owner' },
+			});
+			expect(mockUsersRepository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	it('deve ser possível inativar um usuário', async () => {
@@ -204,5 +316,15 @@ describe('UsersService', () => {
 
 		expect(userData.status).toEqual('INACTIVE');
 		expect(mockUsersRepository.save).toHaveBeenCalledWith(userData);
+	});
+
+	it('não deve salvar novamente um usuário que já está inativo', async () => {
+		userData.status = 'INACTIVE';
+		mockUsersRepository.findOne.mockResolvedValue(userData);
+
+		await service.inactiveUser('uuid-teste');
+
+		expect(userData.status).toEqual('INACTIVE');
+		expect(mockUsersRepository.save).not.toHaveBeenCalled();
 	});
 });
