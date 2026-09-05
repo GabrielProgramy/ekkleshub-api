@@ -11,6 +11,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Users } from './entities/users.entity';
 
+export type UserResponse = Omit<Users, 'password'>;
+
 @Injectable()
 export class UsersService {
 	constructor(
@@ -20,7 +22,7 @@ export class UsersService {
 		private readonly passwordHasher: PasswordHasher,
 	) {}
 
-	async create(createUserDto: CreateUserDto): Promise<Users> {
+	async create(createUserDto: CreateUserDto): Promise<UserResponse> {
 		const userWithSameEmail = await this.usersRepository.exists({
 			where: { email: createUserDto.email },
 		});
@@ -43,7 +45,7 @@ export class UsersService {
 
 		const passwordHash = await this.passwordHasher.hash(createUserDto.password);
 
-		return this.usersRepository.save({
+		const savedUser = await this.usersRepository.save({
 			name: createUserDto.name,
 			email: createUserDto.email,
 			password: passwordHash,
@@ -52,13 +54,17 @@ export class UsersService {
 			member_id: createUserDto.member_id,
 			status: 'ACTIVE',
 		});
+
+		return this.removePassword(savedUser);
 	}
 
-	async findOne(userId: string): Promise<Users | null> {
-		return this.usersRepository.findOne({ where: { id: userId } });
+	async findOne(userId: string): Promise<UserResponse | null> {
+		const user = await this.usersRepository.findOne({ where: { id: userId } });
+
+		return user ? this.removePassword(user) : null;
 	}
 
-	async findOneOrFail(userId: string): Promise<Users> {
+	async findOneOrFail(userId: string): Promise<UserResponse> {
 		const user = await this.findOne(userId);
 
 		if (!user) throw new NotFoundException('Usuário não encontrado!');
@@ -66,11 +72,29 @@ export class UsersService {
 		return user;
 	}
 
-	async findAll(): Promise<Users[]> {
-		return this.usersRepository.find();
+	async findAll(): Promise<UserResponse[]> {
+		const users = await this.usersRepository.find({
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				status: true,
+				access_profile_id: true,
+				church_id: true,
+				member_id: true,
+				last_access_at: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
+
+		return users.map((user) => this.removePassword(user));
 	}
 
-	async update(userId: string, updateUserDto: UpdateUserDto): Promise<Users> {
+	async update(
+		userId: string,
+		updateUserDto: UpdateUserDto,
+	): Promise<UserResponse> {
 		const existingUser = await this.findOneOrFail(userId);
 
 		if (updateUserDto.email) {
@@ -110,7 +134,9 @@ export class UsersService {
 
 		this.usersRepository.merge(existingUser, userDataToUpdate);
 
-		return this.usersRepository.save(existingUser);
+		const updatedUser = await this.usersRepository.save(existingUser);
+
+		return this.removePassword(updatedUser);
 	}
 
 	async inactiveUser(userId: string): Promise<void> {
@@ -121,5 +147,12 @@ export class UsersService {
 		existingUser.status = 'INACTIVE';
 
 		await this.usersRepository.save(existingUser);
+	}
+
+	private removePassword(user: Users): UserResponse {
+		const { password, ...userWithoutPassword } = user;
+		void password;
+
+		return userWithoutPassword;
 	}
 }

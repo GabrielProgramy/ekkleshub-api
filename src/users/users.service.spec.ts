@@ -28,7 +28,7 @@ describe('UsersService', () => {
 	beforeEach(async () => {
 		mockUsersRepository = {
 			exists: jest.fn(),
-			save: jest.fn(),
+			save: jest.fn().mockImplementation((user: Users) => user),
 			find: jest.fn(),
 			findOne: jest.fn(),
 			merge: jest.fn(),
@@ -101,6 +101,7 @@ describe('UsersService', () => {
 			const savedUser = saveCalls[0][0];
 
 			expect(result.status).toBe('ACTIVE');
+			expect(result).not.toHaveProperty('password');
 			expect(mockUsersRepository.exists).toHaveBeenCalledWith({
 				where: { email: 'johndoe@email.com' },
 			});
@@ -205,11 +206,14 @@ describe('UsersService', () => {
 	});
 
 	it('deve ser possível buscar um usuário pelo seu id', async () => {
+		const userWithoutPassword = { ...userData };
+		delete userWithoutPassword.password;
 		mockUsersRepository.findOne.mockResolvedValue(userData);
 
 		const result = await service.findOneOrFail('uuid-teste');
 
-		expect(result).toEqual(userData);
+		expect(result).toEqual(userWithoutPassword);
+		expect(result).not.toHaveProperty('password');
 		expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
 			where: { id: 'uuid-teste' },
 		});
@@ -224,11 +228,28 @@ describe('UsersService', () => {
 	});
 
 	it('deve listar todos os usuários cadastrados', async () => {
+		const userWithoutPassword = { ...userData };
+		delete userWithoutPassword.password;
 		mockUsersRepository.find.mockResolvedValue([userData]);
 
 		const result = await service.findAll();
 
-		expect(result).toEqual([userData]);
+		expect(result).toEqual([userWithoutPassword]);
+		expect(result[0]).not.toHaveProperty('password');
+		expect(mockUsersRepository.find).toHaveBeenCalledWith({
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				status: true,
+				access_profile_id: true,
+				church_id: true,
+				member_id: true,
+				last_access_at: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
 	});
 
 	describe('Atualização de usuário', () => {
@@ -241,6 +262,8 @@ describe('UsersService', () => {
 				...userData,
 				...updatedDataUser,
 			};
+			const userWithoutPassword = { ...mergedDataUser };
+			delete userWithoutPassword.password;
 
 			mockUsersRepository.findOne.mockResolvedValue(userData);
 			mockUsersRepository.exists.mockResolvedValue(false);
@@ -255,13 +278,19 @@ describe('UsersService', () => {
 			mockUsersRepository.save.mockResolvedValue(mergedDataUser);
 
 			const result = await service.update('uuid-teste', updatedDataUser);
+			const mergeCalls = mockUsersRepository.merge.mock.calls as Array<
+				[Users, typeof updatedDataUser]
+			>;
+			const existingUserSentToMerge = mergeCalls[0][0];
 
-			expect(result).toEqual(mergedDataUser);
+			expect(result).toEqual(userWithoutPassword);
+			expect(result).not.toHaveProperty('password');
 			expect(mockUsersRepository.merge).toHaveBeenCalledWith(
-				userData,
+				existingUserSentToMerge,
 				updatedDataUser,
 			);
-			expect(mockUsersRepository.save).toHaveBeenCalledWith(mergedDataUser);
+			expect(existingUserSentToMerge).not.toHaveProperty('password');
+			expect(mockUsersRepository.save).toHaveBeenCalled();
 		});
 
 		it('não deve permitir a atualização para um email existente', async () => {
@@ -314,8 +343,12 @@ describe('UsersService', () => {
 
 		await service.inactiveUser('uuid-teste');
 
-		expect(userData.status).toEqual('INACTIVE');
-		expect(mockUsersRepository.save).toHaveBeenCalledWith(userData);
+		expect(mockUsersRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'uuid-teste',
+				status: 'INACTIVE',
+			}),
+		);
 	});
 
 	it('não deve salvar novamente um usuário que já está inativo', async () => {
