@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChurchModule } from './church/church.module';
 import { AccessProfileModule } from './access-profile/access-profile.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
 	imports: [
@@ -29,6 +30,7 @@ import { AccessProfileModule } from './access-profile/access-profile.module';
 
 		ChurchModule,
 		AccessProfileModule,
+		UsersModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
