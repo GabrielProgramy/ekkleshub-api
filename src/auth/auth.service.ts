@@ -72,11 +72,12 @@ export class AuthService {
 		)
 			throw new UnauthorizedException('Refresh token inválido!');
 
-		return this.generateTokens(
-			payload.sub,
-			payload.email,
-			payload.accessProfileId,
-		);
+		const user = await this.usersService.findOne(payload.sub);
+
+		if (!user || user.status === 'INACTIVE')
+			throw new UnauthorizedException('Refresh token inválido!');
+
+		return this.generateTokens(user.id, user.email, user.access_profile_id);
 	}
 
 	private async generateTokens(

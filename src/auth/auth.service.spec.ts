@@ -11,7 +11,8 @@ describe('AuthService', () => {
 	let service: AuthService;
 	let mockUsersService: {
 		findByEmail: jest.Mock;
-		update: jest.Mock;
+		findOne: jest.Mock;
+		updateLastAccessAt: jest.Mock;
 	};
 	let mockPasswordHasher: {
 		compare: jest.Mock;
@@ -28,7 +29,8 @@ describe('AuthService', () => {
 	beforeEach(async () => {
 		mockUsersService = {
 			findByEmail: jest.fn(),
-			update: jest.fn(),
+			findOne: jest.fn(),
+			updateLastAccessAt: jest.fn(),
 		};
 		mockPasswordHasher = {
 			compare: jest.fn(),
@@ -165,9 +167,10 @@ describe('AuthService', () => {
 
 		await service.authenticate(credentials);
 
-		expect(mockUsersService.update).toHaveBeenCalledWith(registeredUser.id, {
-			last_access_at: lastAccessAt,
-		});
+		expect(mockUsersService.updateLastAccessAt).toHaveBeenCalledWith(
+			registeredUser.id,
+			lastAccessAt,
+		);
 	});
 
 	it('não deve permitir que um usuário inativo se autentique', async () => {
@@ -188,7 +191,7 @@ describe('AuthService', () => {
 		);
 		expect(mockPasswordHasher.compare).not.toHaveBeenCalled();
 		expect(mockJwtService.signAsync).not.toHaveBeenCalled();
-		expect(mockUsersService.update).not.toHaveBeenCalled();
+		expect(mockUsersService.updateLastAccessAt).not.toHaveBeenCalled();
 	});
 
 	describe('Renovação de tokens', () => {
@@ -202,6 +205,7 @@ describe('AuthService', () => {
 			};
 
 			mockJwtService.verifyAsync.mockResolvedValue(refreshTokenPayload);
+			mockUsersService.findOne.mockResolvedValue(registeredUser);
 			mockJwtService.signAsync
 				.mockResolvedValueOnce('novo-access-token')
 				.mockResolvedValueOnce('novo-refresh-token');
@@ -218,6 +222,65 @@ describe('AuthService', () => {
 			expect(mockJwtService.signAsync).toHaveBeenCalledTimes(2);
 		});
 
+		it('deve usar os dados atuais do usuário ao renovar os tokens', async () => {
+			const refreshToken = 'refresh-token-valido';
+			const refreshTokenPayload = {
+				sub: registeredUser.id,
+				email: registeredUser.email,
+				accessProfileId: 'uuid-access-profile-antigo',
+				tokenType: 'refresh',
+			};
+			const currentUser = {
+				...registeredUser,
+				email: 'email-atual@email.com',
+				access_profile_id: 'uuid-access-profile-atual',
+			};
+
+			mockJwtService.verifyAsync.mockResolvedValue(refreshTokenPayload);
+			mockUsersService.findOne.mockResolvedValue(currentUser);
+			mockJwtService.signAsync
+				.mockResolvedValueOnce('novo-access-token')
+				.mockResolvedValueOnce('novo-refresh-token');
+
+			await service.refreshTokens(refreshToken);
+
+			expect(mockUsersService.findOne).toHaveBeenCalledWith(registeredUser.id);
+			expect(mockJwtService.signAsync).toHaveBeenNthCalledWith(
+				1,
+				{
+					sub: currentUser.id,
+					email: currentUser.email,
+					accessProfileId: currentUser.access_profile_id,
+					tokenType: 'access',
+				},
+				expect.any(Object),
+			);
+		});
+
+		it.each([
+			{
+				scenario: 'usuário inexistente',
+				user: null,
+			},
+			{
+				scenario: 'usuário inativo',
+				user: { ...registeredUser, status: 'INACTIVE' },
+			},
+		])('não deve renovar tokens para $scenario', async ({ user }) => {
+			mockJwtService.verifyAsync.mockResolvedValue({
+				sub: registeredUser.id,
+				email: registeredUser.email,
+				accessProfileId: registeredUser.access_profile_id,
+				tokenType: 'refresh',
+			});
+			mockUsersService.findOne.mockResolvedValue(user);
+
+			await expect(service.refreshTokens('refresh-token')).rejects.toThrow(
+				UnauthorizedException,
+			);
+			expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+		});
+
 		it('não deve gerar novos tokens a partir de um refresh token inválido', async () => {
 			const invalidRefreshToken = 'refresh-token-invalido';
 
@@ -226,6 +289,34 @@ describe('AuthService', () => {
 			await expect(service.refreshTokens(invalidRefreshToken)).rejects.toThrow(
 				UnauthorizedException,
 			);
+			expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{
+				scenario: 'um access token',
+				payload: {
+					sub: 'uuid-user',
+					email: 'johndoe@email.com',
+					accessProfileId: 'uuid-access-profile',
+					tokenType: 'access',
+				},
+			},
+			{
+				scenario: 'um payload malformado',
+				payload: {
+					sub: 'uuid-user',
+					email: 'johndoe@email.com',
+					tokenType: 'refresh',
+				},
+			},
+		])('não deve renovar tokens a partir de $scenario', async ({ payload }) => {
+			mockJwtService.verifyAsync.mockResolvedValue(payload);
+
+			await expect(service.refreshTokens('refresh-token')).rejects.toThrow(
+				UnauthorizedException,
+			);
+			expect(mockUsersService.findOne).not.toHaveBeenCalled();
 			expect(mockJwtService.signAsync).not.toHaveBeenCalled();
 		});
 	});
@@ -265,7 +356,7 @@ describe('AuthService', () => {
 				expect(mockPasswordHasher.compare).not.toHaveBeenCalled();
 			}
 
-			expect(mockUsersService.update).not.toHaveBeenCalled();
+			expect(mockUsersService.updateLastAccessAt).not.toHaveBeenCalled();
 			expect(mockJwtService.signAsync).not.toHaveBeenCalled();
 		},
 	);

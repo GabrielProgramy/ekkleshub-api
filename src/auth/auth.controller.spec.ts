@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 describe('AuthController', () => {
 	let controller: AuthController;
@@ -48,7 +49,9 @@ describe('AuthController', () => {
 	});
 
 	it('deve gerar novos tokens a partir de um refresh token', async () => {
-		const refreshToken = 'refresh-token-valido';
+		const refreshTokenDto: RefreshTokenDto = {
+			refreshToken: 'refresh-token-valido',
+		};
 		const newTokens = {
 			accessToken: 'novo-access-token',
 			refreshToken: 'novo-refresh-token',
@@ -56,9 +59,11 @@ describe('AuthController', () => {
 
 		mockAuthService.refreshTokens.mockResolvedValue(newTokens);
 
-		const result = await controller.refreshTokens(refreshToken);
+		const result = await controller.refreshTokens(refreshTokenDto);
 
 		expect(result).toEqual(newTokens);
-		expect(mockAuthService.refreshTokens).toHaveBeenCalledWith(refreshToken);
+		expect(mockAuthService.refreshTokens).toHaveBeenCalledWith(
+			refreshTokenDto.refreshToken,
+		);
 	});
 });
