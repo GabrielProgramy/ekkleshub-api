@@ -46,9 +46,7 @@ export class AuthService {
 			user.access_profile_id,
 		);
 
-		await this.usersService.update(user.id, {
-			last_access_at: new Date(),
-		});
+		await this.usersService.updateLastAccessAt(user.id, new Date());
 
 		return tokens;
 	}
