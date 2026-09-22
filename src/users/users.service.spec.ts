@@ -6,6 +6,7 @@ import { AccessProfileService } from '../access-profile/access-profile.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PasswordHasher } from '../common/security/password-hasher';
 import { Not } from 'typeorm';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -227,6 +228,30 @@ describe('UsersService', () => {
 		);
 	});
 
+	it('deve buscar um usuário pelo email incluindo a senha para autenticação', async () => {
+		mockUsersRepository.findOne.mockResolvedValue(userData);
+
+		const result = await service.findByEmail(userData.email);
+
+		expect(result).toEqual(userData);
+		expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
+			where: { email: userData.email },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				password: true,
+				status: true,
+				access_profile_id: true,
+				church_id: true,
+				member_id: true,
+				last_access_at: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
+	});
+
 	it('deve listar todos os usuários cadastrados', async () => {
 		const userWithoutPassword = { ...userData };
 		delete userWithoutPassword.password;
@@ -293,6 +318,22 @@ describe('UsersService', () => {
 			expect(mockUsersRepository.save).toHaveBeenCalled();
 		});
 
+		it('não deve permitir atualizar last_access_at pelo update público', async () => {
+			const lastAccessAt = new Date('2026-09-21T12:00:00.000Z');
+			const updateData = {
+				last_access_at: lastAccessAt,
+			} as unknown as UpdateUserDto;
+
+			mockUsersRepository.findOne.mockResolvedValue(userData);
+
+			await service.update('uuid-teste', updateData);
+
+			expect(mockUsersRepository.merge).toHaveBeenCalledWith(
+				expect.anything(),
+				{},
+			);
+		});
+
 		it('não deve permitir a atualização para um email existente', async () => {
 			const updatedDataUser = {
 				email: 'existing@email.com',
@@ -336,6 +377,20 @@ describe('UsersService', () => {
 			});
 			expect(mockUsersRepository.save).not.toHaveBeenCalled();
 		});
+	});
+
+	it('deve atualizar o último acesso por uma operação interna', async () => {
+		const lastAccessAt = new Date('2026-09-21T12:00:00.000Z');
+		mockUsersRepository.findOne.mockResolvedValue(userData);
+
+		await service.updateLastAccessAt('uuid-teste', lastAccessAt);
+
+		expect(mockUsersRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'uuid-teste',
+				last_access_at: lastAccessAt,
+			}),
+		);
 	});
 
 	it('deve ser possível inativar um usuário', async () => {

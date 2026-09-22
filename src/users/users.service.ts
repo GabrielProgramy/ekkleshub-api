@@ -143,7 +143,10 @@ export class UsersService {
 			}
 		}
 
-		const userDataToUpdate = { ...updateUserDto };
+		const userDataToUpdate = {
+			...updateUserDto,
+		} as UpdateUserDto & { last_access_at?: Date };
+		delete userDataToUpdate.last_access_at;
 
 		if (updateUserDto.password) {
 			userDataToUpdate.password = await this.passwordHasher.hash(
@@ -156,6 +159,14 @@ export class UsersService {
 		const updatedUser = await this.usersRepository.save(existingUser);
 
 		return this.removePassword(updatedUser);
+	}
+
+	async updateLastAccessAt(userId: string, lastAccessAt: Date): Promise<void> {
+		const existingUser = await this.findOneOrFail(userId);
+
+		existingUser.last_access_at = lastAccessAt;
+
+		await this.usersRepository.save(existingUser);
 	}
 
 	async inactiveUser(userId: string): Promise<void> {
