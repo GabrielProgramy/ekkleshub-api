@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 export type AccessTokenPayload = {
 	sub: string;
@@ -28,9 +30,17 @@ export class AuthGuard implements CanActivate {
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
 		private readonly usersService: UsersService,
+		private readonly reflector: Reflector,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
+		const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+			context.getHandler(),
+			context.getClass(),
+		]);
+
+		if (isPublic) return true;
+
 		const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 		const token = this.extractBearerToken(request);
 
@@ -59,7 +69,11 @@ export class AuthGuard implements CanActivate {
 		if (!user || user.status === 'INACTIVE')
 			throw new UnauthorizedException('Token de acesso inválido!');
 
-		request.user = payload;
+		request.user = {
+			...payload,
+			email: user.email,
+			accessProfileId: user.access_profile_id,
+		};
 
 		return true;
 	}
