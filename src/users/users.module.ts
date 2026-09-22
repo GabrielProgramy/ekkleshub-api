@@ -10,5 +10,6 @@ import { UsersController } from './users.controller';
 	imports: [TypeOrmModule.forFeature([Users]), AccessProfileModule],
 	controllers: [UsersController],
 	providers: [UsersService, PasswordHasher],
+	exports: [UsersService, PasswordHasher],
 })
 export class UsersModule {}

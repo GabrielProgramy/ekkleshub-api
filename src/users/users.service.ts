@@ -72,6 +72,25 @@ export class UsersService {
 		return user;
 	}
 
+	async findByEmail(email: string): Promise<Users | null> {
+		return this.usersRepository.findOne({
+			where: { email },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				password: true,
+				status: true,
+				access_profile_id: true,
+				church_id: true,
+				member_id: true,
+				last_access_at: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
+	}
+
 	async findAll(): Promise<UserResponse[]> {
 		const users = await this.usersRepository.find({
 			select: {
@@ -124,7 +143,10 @@ export class UsersService {
 			}
 		}
 
-		const userDataToUpdate = { ...updateUserDto };
+		const userDataToUpdate = {
+			...updateUserDto,
+		} as UpdateUserDto & { last_access_at?: Date };
+		delete userDataToUpdate.last_access_at;
 
 		if (updateUserDto.password) {
 			userDataToUpdate.password = await this.passwordHasher.hash(
@@ -137,6 +159,14 @@ export class UsersService {
 		const updatedUser = await this.usersRepository.save(existingUser);
 
 		return this.removePassword(updatedUser);
+	}
+
+	async updateLastAccessAt(userId: string, lastAccessAt: Date): Promise<void> {
+		const existingUser = await this.findOneOrFail(userId);
+
+		existingUser.last_access_at = lastAccessAt;
+
+		await this.usersRepository.save(existingUser);
 	}
 
 	async inactiveUser(userId: string): Promise<void> {
