@@ -7,8 +7,13 @@ import {
 	PermissionScope,
 } from './entities/access-profile.entity';
 import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	ForbiddenException,
+	NotFoundException,
+} from '@nestjs/common';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
 
 describe('AccessProfileService', () => {
 	let service: AccessProfileService;
@@ -21,6 +26,12 @@ describe('AccessProfileService', () => {
 	};
 	let createAccessProfileData: CreateAccessProfileDto;
 	let existingAccessProfileData: AccessProfile;
+	const authenticatedUser: AuthenticatedUser = {
+		id: 'uuid-user',
+		email: 'user@email.com',
+		accessProfileId: 'uuid-profile',
+		tokenType: 'access',
+	};
 
 	beforeEach(async () => {
 		mockAccessProfileRepository = {
@@ -79,6 +90,39 @@ describe('AccessProfileService', () => {
 		}).compile();
 
 		service = module.get<AccessProfileService>(AccessProfileService);
+	});
+
+	it('deve permitir leitura de perfis para uma permissão READ', async () => {
+		mockAccessProfileRepository.find.mockResolvedValue([
+			existingAccessProfileData,
+		]);
+		mockAccessProfileRepository.findOne.mockResolvedValue({
+			permissions: {
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.GLOBAL,
+				},
+			},
+		});
+
+		await expect(service.findAll(authenticatedUser)).resolves.toEqual([
+			existingAccessProfileData,
+		]);
+	});
+
+	it('deve negar criação quando a permissão é somente READ', async () => {
+		mockAccessProfileRepository.findOne.mockResolvedValue({
+			permissions: {
+				ACCESS_PROFILES: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.GLOBAL,
+				},
+			},
+		});
+
+		await expect(
+			service.create(createAccessProfileData, authenticatedUser),
+		).rejects.toThrow(ForbiddenException);
 	});
 
 	it('deve permitir a criar um perfil de acesso com nome ainda não existentes e permissões válidas', async () => {

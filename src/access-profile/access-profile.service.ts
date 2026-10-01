@@ -8,6 +8,12 @@ import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
 import { AccessProfile } from './entities/access-profile.entity';
 import { Not, Repository } from 'typeorm';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
+import { assertPermission } from '../common/security/authorization-policy';
+import {
+	PermissionLevel,
+	PermissionModule,
+} from './entities/access-profile.entity';
 
 @Injectable()
 export class AccessProfileService {
@@ -18,7 +24,14 @@ export class AccessProfileService {
 
 	async create(
 		createAccessProfileDto: CreateAccessProfileDto,
+		authenticatedUser?: AuthenticatedUser,
 	): Promise<AccessProfile> {
+		await assertPermission(
+			this,
+			authenticatedUser,
+			PermissionModule.ACCESS_PROFILES,
+			PermissionLevel.FULL,
+		);
 		const alreadyExistsAccessProfile =
 			await this.accessProfileRepository.exists({
 				where: {
@@ -32,11 +45,28 @@ export class AccessProfileService {
 		return this.accessProfileRepository.save(createAccessProfileDto);
 	}
 
-	async findAll(): Promise<AccessProfile[]> {
+	async findAll(
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<AccessProfile[]> {
+		await assertPermission(
+			this,
+			authenticatedUser,
+			PermissionModule.ACCESS_PROFILES,
+			PermissionLevel.READ,
+		);
 		return this.accessProfileRepository.find();
 	}
 
-	async findOne(accessProfileId: string): Promise<AccessProfile | null> {
+	async findOne(
+		accessProfileId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<AccessProfile | null> {
+		await assertPermission(
+			this,
+			authenticatedUser,
+			PermissionModule.ACCESS_PROFILES,
+			PermissionLevel.READ,
+		);
 		return this.accessProfileRepository.findOne({
 			where: {
 				id: accessProfileId,
@@ -44,8 +74,14 @@ export class AccessProfileService {
 		});
 	}
 
-	async findOneOrFail(accessProfileId: string): Promise<AccessProfile> {
-		const accessProfile = await this.findOne(accessProfileId);
+	async findOneOrFail(
+		accessProfileId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<AccessProfile> {
+		const accessProfile = await this.findOne(
+			accessProfileId,
+			authenticatedUser,
+		);
 
 		if (!accessProfile)
 			throw new NotFoundException('O perfil de acesso não existe!');
@@ -56,7 +92,14 @@ export class AccessProfileService {
 	async update(
 		accessProfileId: string,
 		{ name, permissions }: UpdateAccessProfileDto,
+		authenticatedUser?: AuthenticatedUser,
 	): Promise<AccessProfile> {
+		await assertPermission(
+			this,
+			authenticatedUser,
+			PermissionModule.ACCESS_PROFILES,
+			PermissionLevel.FULL,
+		);
 		const existingAccessProfile = await this.findOneOrFail(accessProfileId);
 
 		if (name) {
@@ -88,7 +131,16 @@ export class AccessProfileService {
 		return existingAccessProfile;
 	}
 
-	async deleteOne(accessProfileId: string): Promise<void> {
+	async deleteOne(
+		accessProfileId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<void> {
+		await assertPermission(
+			this,
+			authenticatedUser,
+			PermissionModule.ACCESS_PROFILES,
+			PermissionLevel.FULL,
+		);
 		await this.accessProfileRepository.delete(accessProfileId);
 	}
 }

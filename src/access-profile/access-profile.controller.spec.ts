@@ -86,6 +86,7 @@ describe('AccessProfileController', () => {
 		expect(result).toEqual(newAccessProfile);
 		expect(mockAccessProfileService.create).toHaveBeenCalledWith(
 			newAccessProfileData,
+			undefined,
 		);
 	});
 
@@ -208,6 +209,7 @@ describe('AccessProfileController', () => {
 		expect(result).toEqual(accessProfile);
 		expect(mockAccessProfileService.findOneOrFail).toHaveBeenCalledWith(
 			accessProfileId,
+			undefined,
 		);
 	});
 
@@ -269,6 +271,7 @@ describe('AccessProfileController', () => {
 		expect(mockAccessProfileService.update).toHaveBeenCalledWith(
 			accessProfileId,
 			updateData,
+			undefined,
 		);
 	});
 
@@ -279,6 +282,7 @@ describe('AccessProfileController', () => {
 
 		expect(mockAccessProfileService.deleteOne).toHaveBeenCalledWith(
 			accessProfileId,
+			undefined,
 		);
 	});
 });
