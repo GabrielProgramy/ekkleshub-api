@@ -7,6 +7,13 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PasswordHasher } from '../common/security/password-hasher';
 import { Not } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ForbiddenException } from '@nestjs/common';
+import {
+	PermissionLevel,
+	PermissionModule,
+	PermissionScope,
+} from '../access-profile/entities/access-profile.entity';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -21,6 +28,7 @@ describe('UsersService', () => {
 
 	let mockAccessProfileService: {
 		findOneOrFail: jest.Mock;
+		findOne: jest.Mock;
 	};
 	let mockPasswordHasher: {
 		hash: jest.Mock;
@@ -37,6 +45,7 @@ describe('UsersService', () => {
 
 		mockAccessProfileService = {
 			findOneOrFail: jest.fn(),
+			findOne: jest.fn(),
 		};
 		mockPasswordHasher = {
 			hash: jest.fn().mockResolvedValue('senha_com_hash'),
@@ -72,6 +81,85 @@ describe('UsersService', () => {
 		}).compile();
 
 		service = module.get<UsersService>(UsersService);
+	});
+
+	it('deve filtrar usuários pela igreja do usuário no escopo OWN_CHURCH', async () => {
+		const authenticatedUser: AuthenticatedUser = {
+			id: 'uuid-authenticated-user',
+			email: 'user@email.com',
+			accessProfileId: 'uuid-profile',
+			churchId: 'uuid-own-church',
+			tokenType: 'access',
+		};
+		mockAccessProfileService.findOne.mockResolvedValue({
+			permissions: {
+				[PermissionModule.USERS]: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.OWN_CHURCH,
+				},
+			},
+		});
+		mockUsersRepository.find.mockResolvedValue([]);
+
+		await service.findAll(authenticatedUser);
+
+		expect(mockUsersRepository.find).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { church_id: authenticatedUser.churchId },
+			}),
+		);
+	});
+
+	it('deve negar atualização quando o perfil possui somente READ', async () => {
+		const authenticatedUser: AuthenticatedUser = {
+			id: 'uuid-authenticated-user',
+			email: 'user@email.com',
+			accessProfileId: 'uuid-profile',
+			churchId: 'uuid-own-church',
+			tokenType: 'access',
+		};
+		mockUsersRepository.findOne.mockResolvedValue({
+			...userData,
+			church_id: authenticatedUser.churchId,
+		});
+		mockAccessProfileService.findOne.mockResolvedValue({
+			permissions: {
+				[PermissionModule.USERS]: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.OWN_CHURCH,
+				},
+			},
+		});
+
+		await expect(
+			service.update('uuid-teste', { name: 'Updated' }, authenticatedUser),
+		).rejects.toThrow(ForbiddenException);
+	});
+
+	it('deve negar leitura de usuário vinculado a outra igreja', async () => {
+		const authenticatedUser: AuthenticatedUser = {
+			id: 'uuid-authenticated-user',
+			email: 'user@email.com',
+			accessProfileId: 'uuid-profile',
+			churchId: 'uuid-own-church',
+			tokenType: 'access',
+		};
+		mockUsersRepository.findOne.mockResolvedValue({
+			...userData,
+			church_id: 'uuid-other-church',
+		});
+		mockAccessProfileService.findOne.mockResolvedValue({
+			permissions: {
+				[PermissionModule.USERS]: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.OWN_CHURCH,
+				},
+			},
+		});
+
+		await expect(
+			service.findOne('uuid-teste', authenticatedUser),
+		).rejects.toThrow(ForbiddenException);
 	});
 	describe('Criação de usuário', () => {
 		it('deve ser possível cadastrar um usuário com perfil válido', async () => {
@@ -262,6 +350,7 @@ describe('UsersService', () => {
 		expect(result).toEqual([userWithoutPassword]);
 		expect(result[0]).not.toHaveProperty('password');
 		expect(mockUsersRepository.find).toHaveBeenCalledWith({
+			where: {},
 			select: {
 				id: true,
 				name: true,

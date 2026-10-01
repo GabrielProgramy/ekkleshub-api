@@ -60,7 +60,10 @@ describe('UsersController', () => {
 		const result = await controller.create(createUserDto);
 
 		expect(result).toEqual(userData);
-		expect(mockUsersService.create).toHaveBeenCalledWith(createUserDto);
+		expect(mockUsersService.create).toHaveBeenCalledWith(
+			createUserDto,
+			undefined,
+		);
 	});
 
 	it('deve ser possível listar todos os usuários', async () => {
@@ -78,7 +81,10 @@ describe('UsersController', () => {
 		const result = await controller.findOne('uuid-user');
 
 		expect(result).toEqual(userData);
-		expect(mockUsersService.findOneOrFail).toHaveBeenCalledWith('uuid-user');
+		expect(mockUsersService.findOneOrFail).toHaveBeenCalledWith(
+			'uuid-user',
+			undefined,
+		);
 	});
 
 	it('deve ser possível atualizar um usuário', async () => {
@@ -98,12 +104,16 @@ describe('UsersController', () => {
 		expect(mockUsersService.update).toHaveBeenCalledWith(
 			'uuid-user',
 			updateUserDto,
+			undefined,
 		);
 	});
 
 	it('deve ser possível inativar um usuário', async () => {
 		await controller.inactiveUser('uuid-user');
 
-		expect(mockUsersService.inactiveUser).toHaveBeenCalledWith('uuid-user');
+		expect(mockUsersService.inactiveUser).toHaveBeenCalledWith(
+			'uuid-user',
+			undefined,
+		);
 	});
 });

@@ -10,6 +10,13 @@ import { PasswordHasher } from '../common/security/password-hasher';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Users } from './entities/users.entity';
+import { assertPermission } from '../common/security/authorization-policy';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
+import {
+	PermissionLevel,
+	PermissionModule,
+	PermissionScope,
+} from '../access-profile/entities/access-profile.entity';
 
 export type UserResponse = Omit<Users, 'password'>;
 
@@ -22,7 +29,17 @@ export class UsersService {
 		private readonly passwordHasher: PasswordHasher,
 	) {}
 
-	async create(createUserDto: CreateUserDto): Promise<UserResponse> {
+	async create(
+		createUserDto: CreateUserDto,
+		user?: AuthenticatedUser,
+	): Promise<UserResponse> {
+		await assertPermission(
+			this.accessProfileService,
+			user,
+			PermissionModule.USERS,
+			PermissionLevel.FULL,
+			createUserDto.church_id,
+		);
 		const userWithSameEmail = await this.usersRepository.exists({
 			where: { email: createUserDto.email },
 		});
@@ -58,14 +75,27 @@ export class UsersService {
 		return this.removePassword(savedUser);
 	}
 
-	async findOne(userId: string): Promise<UserResponse | null> {
+	async findOne(
+		userId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<UserResponse | null> {
 		const user = await this.usersRepository.findOne({ where: { id: userId } });
+		await assertPermission(
+			this.accessProfileService,
+			authenticatedUser,
+			PermissionModule.USERS,
+			PermissionLevel.READ,
+			user?.church_id,
+		);
 
 		return user ? this.removePassword(user) : null;
 	}
 
-	async findOneOrFail(userId: string): Promise<UserResponse> {
-		const user = await this.findOne(userId);
+	async findOneOrFail(
+		userId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<UserResponse> {
+		const user = await this.findOne(userId, authenticatedUser);
 
 		if (!user) throw new NotFoundException('Usuário não encontrado!');
 
@@ -91,8 +121,28 @@ export class UsersService {
 		});
 	}
 
-	async findAll(): Promise<UserResponse[]> {
+	async findAll(
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<UserResponse[]> {
+		await assertPermission(
+			this.accessProfileService,
+			authenticatedUser,
+			PermissionModule.USERS,
+			PermissionLevel.READ,
+		);
+		const permission =
+			authenticatedUser &&
+			(
+				await this.accessProfileService.findOne(
+					authenticatedUser.accessProfileId,
+				)
+			)?.permissions?.[PermissionModule.USERS];
 		const users = await this.usersRepository.find({
+			where:
+				permission?.scope === PermissionScope.OWN_CHURCH &&
+				authenticatedUser?.churchId
+					? { church_id: authenticatedUser.churchId }
+					: {},
 			select: {
 				id: true,
 				name: true,
@@ -113,8 +163,16 @@ export class UsersService {
 	async update(
 		userId: string,
 		updateUserDto: UpdateUserDto,
+		authenticatedUser?: AuthenticatedUser,
 	): Promise<UserResponse> {
 		const existingUser = await this.findOneOrFail(userId);
+		await assertPermission(
+			this.accessProfileService,
+			authenticatedUser,
+			PermissionModule.USERS,
+			PermissionLevel.FULL,
+			existingUser.church_id,
+		);
 
 		if (updateUserDto.email) {
 			const userWithSameEmail = await this.usersRepository.exists({
@@ -169,8 +227,18 @@ export class UsersService {
 		await this.usersRepository.save(existingUser);
 	}
 
-	async inactiveUser(userId: string): Promise<void> {
+	async inactiveUser(
+		userId: string,
+		authenticatedUser?: AuthenticatedUser,
+	): Promise<void> {
 		const existingUser = await this.findOneOrFail(userId);
+		await assertPermission(
+			this.accessProfileService,
+			authenticatedUser,
+			PermissionModule.USERS,
+			PermissionLevel.FULL,
+			existingUser.church_id,
+		);
 
 		if (existingUser.status === 'INACTIVE') return;
 
