@@ -10,18 +10,14 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { AuthenticatedUser } from '../types/authenticated-user';
 
-export type AccessTokenPayload = {
+export type AccessTokenPayload = Omit<AuthenticatedUser, 'id' | 'churchId'> & {
 	sub: string;
-	email: string;
-	accessProfileId: string;
-	tokenType: 'access';
-	iat?: number;
-	exp?: number;
 };
 
 type AuthenticatedRequest = Request & {
-	user?: AccessTokenPayload;
+	user?: AuthenticatedUser;
 };
 
 @Injectable()
@@ -70,9 +66,13 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token de acesso inválido!');
 
 		request.user = {
-			...payload,
+			id: user.id,
 			email: user.email,
 			accessProfileId: user.access_profile_id,
+			churchId: user.church_id,
+			tokenType: payload.tokenType,
+			iat: payload.iat,
+			exp: payload.exp,
 		};
 
 		return true;
