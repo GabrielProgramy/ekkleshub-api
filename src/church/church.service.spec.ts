@@ -3,8 +3,19 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChurchService } from './church.service';
 import { Church, ChurchStatus, ChurchType } from './entities/church.entity';
 import { CreateChurchDto } from './dto/create-church.dto';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	ForbiddenException,
+	NotFoundException,
+} from '@nestjs/common';
 import { UpdateChurchDto } from './dto/update-church.dto';
+import { AccessProfileService } from '../access-profile/access-profile.service';
+import {
+	PermissionLevel,
+	PermissionModule,
+	PermissionScope,
+} from '../access-profile/entities/access-profile.entity';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
 
 describe('ChurchService', () => {
 	let service: ChurchService;
@@ -15,9 +26,17 @@ describe('ChurchService', () => {
 		findOne: jest.Mock;
 		merge: jest.Mock;
 	};
+	let mockAccessProfileService: { findOne: jest.Mock };
 	let churchTestData: CreateChurchDto;
 
 	let existingChurchTest: Church;
+	const authenticatedUser: AuthenticatedUser = {
+		id: 'uuid-user',
+		email: 'user@email.com',
+		accessProfileId: 'uuid-profile',
+		churchId: 'uuid-own-church',
+		tokenType: 'access',
+	};
 
 	beforeEach(async () => {
 		mockChurchRepository = {
@@ -27,6 +46,7 @@ describe('ChurchService', () => {
 			findOne: jest.fn(),
 			merge: jest.fn(),
 		};
+		mockAccessProfileService = { findOne: jest.fn() };
 
 		churchTestData = {
 			name: 'Igreja Teste Sede',
@@ -56,10 +76,44 @@ describe('ChurchService', () => {
 					provide: getRepositoryToken(Church),
 					useValue: mockChurchRepository,
 				},
+				{ provide: AccessProfileService, useValue: mockAccessProfileService },
 			],
 		}).compile();
 
 		service = module.get<ChurchService>(ChurchService);
+	});
+
+	it('deve limitar a listagem à igreja do usuário no escopo OWN_CHURCH', async () => {
+		mockAccessProfileService.findOne.mockResolvedValue({
+			permissions: {
+				[PermissionModule.CHURCHES]: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.OWN_CHURCH,
+				},
+			},
+		});
+		mockChurchRepository.find.mockResolvedValue([existingChurchTest]);
+
+		await service.findAll(authenticatedUser);
+
+		expect(mockChurchRepository.find).toHaveBeenCalledWith({
+			where: { id: authenticatedUser.churchId },
+		});
+	});
+
+	it('deve negar escrita quando o perfil possui somente READ', async () => {
+		mockAccessProfileService.findOne.mockResolvedValue({
+			permissions: {
+				[PermissionModule.CHURCHES]: {
+					permission: PermissionLevel.READ,
+					scope: PermissionScope.OWN_CHURCH,
+				},
+			},
+		});
+
+		await expect(
+			service.close(existingChurchTest.id, authenticatedUser),
+		).rejects.toThrow(ForbiddenException);
 	});
 
 	it('deve impedir a criação de uma segunda igreja matriz', async () => {

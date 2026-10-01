@@ -64,7 +64,10 @@ describe('ChurchController', () => {
 		const result = await controller.create(newChurchData);
 
 		expect(result).toEqual(newChurch);
-		expect(mockChurchService.create).toHaveBeenCalledWith(newChurchData);
+		expect(mockChurchService.create).toHaveBeenCalledWith(
+			newChurchData,
+			undefined,
+		);
 	});
 
 	it('deve ser possivel listar todas as igrejas registradas', async () => {
@@ -156,7 +159,10 @@ describe('ChurchController', () => {
 		const result = await controller.findOne(churchId);
 
 		expect(result).toEqual(church);
-		expect(mockChurchService.findOneOrFail).toHaveBeenCalledWith(churchId);
+		expect(mockChurchService.findOneOrFail).toHaveBeenCalledWith(
+			churchId,
+			undefined,
+		);
 	});
 
 	it('deve ser possivel alterar dados de uma igreja por seu id', async () => {
@@ -196,6 +202,7 @@ describe('ChurchController', () => {
 		expect(mockChurchService.update).toHaveBeenCalledWith(
 			churchId,
 			updatedData,
+			undefined,
 		);
 	});
 
@@ -205,6 +212,6 @@ describe('ChurchController', () => {
 		await controller.close(churchId);
 
 		expect(mockChurchService.close).toHaveBeenCalledTimes(1);
-		expect(mockChurchService.close).toHaveBeenCalledWith(churchId);
+		expect(mockChurchService.close).toHaveBeenCalledWith(churchId, undefined);
 	});
 });
