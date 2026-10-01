@@ -79,7 +79,12 @@ describe('AuthGuard', () => {
 			secret: 'access-secret',
 		});
 		expect(mockUsersService.findOne).toHaveBeenCalledWith('uuid-user');
-		expect(request.user).toEqual(payload);
+		expect(request.user).toEqual({
+			id: 'uuid-user',
+			email: 'johndoe@email.com',
+			accessProfileId: 'uuid-access-profile',
+			tokenType: 'access',
+		});
 	});
 
 	it('deve adicionar os dados atuais do usuário em request.user', async () => {
@@ -93,6 +98,7 @@ describe('AuthGuard', () => {
 			id: 'uuid-user',
 			email: 'email-atual@email.com',
 			access_profile_id: 'uuid-access-profile-atual',
+			church_id: 'uuid-church',
 			status: 'ACTIVE',
 		};
 		request.headers.authorization = 'Bearer access-token';
@@ -102,9 +108,10 @@ describe('AuthGuard', () => {
 		await expect(guard.canActivate(context)).resolves.toBe(true);
 
 		expect(request.user).toEqual({
-			sub: currentUser.id,
+			id: currentUser.id,
 			email: currentUser.email,
 			accessProfileId: currentUser.access_profile_id,
+			churchId: currentUser.church_id,
 			tokenType: payload.tokenType,
 		});
 	});
