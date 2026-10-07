@@ -162,6 +162,85 @@ describe('UsersService', () => {
 		).rejects.toThrow(ForbiddenException);
 	});
 	describe('Criação de usuário', () => {
+		it('deve impedir que um usuário OWN_CHURCH crie usuário em outra igreja', async () => {
+			const authenticatedUser: AuthenticatedUser = {
+				id: 'uuid-authenticated-user',
+				email: 'user@email.com',
+				accessProfileId: 'uuid-profile',
+				churchId: 'uuid-own-church',
+				tokenType: 'access',
+			};
+			mockUsersRepository.findOne.mockResolvedValue({
+				...userData,
+				id: authenticatedUser.id,
+				church_id: authenticatedUser.churchId,
+			});
+			mockAccessProfileService.findOne.mockResolvedValue({
+				permissions: {
+					[PermissionModule.USERS]: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.OWN_CHURCH,
+					},
+				},
+			});
+
+			await expect(
+				service.create(
+					{
+						name: 'New User',
+						email: 'new@email.com',
+						password: 'password123',
+						access_profile_id: 'uuid-target-profile',
+						church_id: 'uuid-other-church',
+					},
+					authenticatedUser,
+				),
+			).rejects.toThrow(ForbiddenException);
+			expect(mockUsersRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('deve vincular o novo usuário à igreja do criador OWN_CHURCH', async () => {
+			const authenticatedUser: AuthenticatedUser = {
+				id: 'uuid-authenticated-user',
+				email: 'user@email.com',
+				accessProfileId: 'uuid-profile',
+				churchId: 'uuid-own-church',
+				tokenType: 'access',
+			};
+			mockUsersRepository.findOne.mockResolvedValue({
+				...userData,
+				id: authenticatedUser.id,
+				church_id: authenticatedUser.churchId,
+			});
+			mockUsersRepository.exists.mockResolvedValue(false);
+			mockAccessProfileService.findOne.mockResolvedValue({
+				permissions: {
+					[PermissionModule.USERS]: {
+						permission: PermissionLevel.FULL,
+						scope: PermissionScope.OWN_CHURCH,
+					},
+				},
+			});
+			mockAccessProfileService.findOneOrFail.mockResolvedValue({
+				id: 'uuid-target-profile',
+				name: 'LOCAL',
+			});
+
+			await service.create(
+				{
+					name: 'New User',
+					email: 'new@email.com',
+					password: 'password123',
+					access_profile_id: 'uuid-target-profile',
+				},
+				authenticatedUser,
+			);
+
+			expect(mockUsersRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ church_id: authenticatedUser.churchId }),
+			);
+		});
+
 		it('deve ser possível cadastrar um usuário com perfil válido', async () => {
 			const userDataCreated = {
 				name: 'John Doe',

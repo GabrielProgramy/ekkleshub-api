@@ -1,5 +1,6 @@
 import {
 	ConflictException,
+	ForbiddenException,
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
@@ -33,12 +34,34 @@ export class UsersService {
 		createUserDto: CreateUserDto,
 		user?: AuthenticatedUser,
 	): Promise<UserResponse> {
+		const authenticatedUser = user
+			? await this.usersRepository.findOne({
+					where: { id: user.id },
+					select: { id: true, church_id: true },
+				})
+			: null;
+
+		if (user && !authenticatedUser)
+			throw new ForbiddenException('Usuário autenticado não encontrado!');
+
+		const accessProfilePermissions = user
+			? (await this.accessProfileService.findOne(user.accessProfileId))
+					?.permissions?.[PermissionModule.USERS]
+			: undefined;
+		const userWithCurrentChurch = user
+			? { ...user, churchId: authenticatedUser?.church_id }
+			: undefined;
+		const churchId =
+			accessProfilePermissions?.scope === PermissionScope.OWN_CHURCH
+				? authenticatedUser?.church_id
+				: createUserDto.church_id;
+
 		await assertPermission(
 			this.accessProfileService,
-			user,
+			userWithCurrentChurch,
 			PermissionModule.USERS,
 			PermissionLevel.FULL,
-			createUserDto.church_id,
+			createUserDto.church_id ?? churchId,
 		);
 		const userWithSameEmail = await this.usersRepository.exists({
 			where: { email: createUserDto.email },
@@ -67,7 +90,7 @@ export class UsersService {
 			email: createUserDto.email,
 			password: passwordHash,
 			access_profile_id: accessProfile.id,
-			church_id: createUserDto.church_id,
+			church_id: churchId,
 			member_id: createUserDto.member_id,
 			status: 'ACTIVE',
 		});
