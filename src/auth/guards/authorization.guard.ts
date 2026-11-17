@@ -14,12 +14,7 @@ import {
 	PermissionModule,
 } from '../../access-profile/entities/access-profile.entity';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-
-type AuthenticatedRequest = Request & {
-	user?: {
-		accessProfileId?: string;
-	};
-};
+import { AuthenticatedRequest } from '../types/authenticated-user';
 
 const controllerModules: Record<string, PermissionModule> = {
 	church: PermissionModule.CHURCHES,
@@ -71,6 +66,8 @@ export class AuthorizationGuard implements CanActivate {
 			throw new ForbiddenException(
 				'Você não tem permissão para acessar este recurso!',
 			);
+
+		request.permissions = accessProfile.permissions;
 
 		return true;
 	}

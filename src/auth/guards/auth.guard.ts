@@ -7,17 +7,16 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { AuthenticatedUser } from '../types/authenticated-user';
+import { Request } from 'express';
+import {
+	AuthenticatedRequest,
+	AuthenticatedUser,
+} from '../types/authenticated-user';
 
 export type AccessTokenPayload = Omit<AuthenticatedUser, 'id' | 'churchId'> & {
 	sub: string;
-};
-
-type AuthenticatedRequest = Request & {
-	user?: AuthenticatedUser;
 };
 
 @Injectable()

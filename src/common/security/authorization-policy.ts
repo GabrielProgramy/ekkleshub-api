@@ -1,25 +1,22 @@
 import { ForbiddenException } from '@nestjs/common';
-import { AccessProfileService } from '../../access-profile/access-profile.service';
 import {
+	Permission,
 	PermissionLevel,
 	PermissionModule,
 	PermissionScope,
 } from '../../access-profile/entities/access-profile.entity';
 import { AuthenticatedUser } from '../../auth/types/authenticated-user';
 
-export async function assertPermission(
-	accessProfileService: AccessProfileService,
+export function assertPermission(
+	permissions: Permission | undefined,
 	user: AuthenticatedUser | undefined,
 	module: PermissionModule,
 	requiredPermission: PermissionLevel,
 	targetChurchId?: string,
-): Promise<void> {
+): void {
 	if (!user) return;
 
-	const accessProfile = await accessProfileService.findOne(
-		user.accessProfileId,
-	);
-	const modulePermission = accessProfile?.permissions?.[module];
+	const modulePermission = permissions?.[module];
 
 	if (!modulePermission || modulePermission.permission === PermissionLevel.NONE)
 		throw new ForbiddenException('Você não tem permissão para este recurso!');
