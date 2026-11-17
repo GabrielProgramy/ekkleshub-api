@@ -9,11 +9,10 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import type { AuthenticatedRequest } from 'src/auth/types/authenticated-user';
 
 @Controller('users')
 export class UsersController {
@@ -22,39 +21,53 @@ export class UsersController {
 	@Post()
 	create(
 		@Body() createUserDto: CreateUserDto,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
-		return this.usersService.create(createUserDto, request?.user);
+		return this.usersService.create(
+			createUserDto,
+			request?.user,
+			request?.permissions,
+		);
 	}
 
 	@Get()
-	findAll(@Req() request?: Request & { user?: AuthenticatedUser }) {
-		return this.usersService.findAll(request?.user);
+	findAll(@Req() request?: AuthenticatedRequest) {
+		return this.usersService.findAll(request?.user, request?.permissions);
 	}
 
 	@Get(':id')
-	findOne(
-		@Param('id') userId: string,
-		@Req() request?: Request & { user?: AuthenticatedUser },
-	) {
-		return this.usersService.findOneOrFail(userId, request?.user);
+	findOne(@Param('id') userId: string, @Req() request?: AuthenticatedRequest) {
+		return this.usersService.findOneOrFail(
+			userId,
+			request?.user,
+			request?.permissions,
+		);
 	}
 
 	@Patch(':id')
 	update(
 		@Param('id') userId: string,
 		@Body() updateUserDto: UpdateUserDto,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
-		return this.usersService.update(userId, updateUserDto, request?.user);
+		return this.usersService.update(
+			userId,
+			updateUserDto,
+			request?.user,
+			request?.permissions,
+		);
 	}
 
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Patch(':id/inactive')
 	async inactiveUser(
 		@Param('id') userId: string,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	): Promise<void> {
-		await this.usersService.inactiveUser(userId, request?.user);
+		await this.usersService.inactiveUser(
+			userId,
+			request?.user,
+			request?.permissions,
+		);
 	}
 }

@@ -1,6 +1,5 @@
 import {
 	ConflictException,
-	ForbiddenException,
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
@@ -14,6 +13,7 @@ import { Users } from './entities/users.entity';
 import { assertPermission } from '../common/security/authorization-policy';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import {
+	Permission,
 	PermissionLevel,
 	PermissionModule,
 	PermissionScope,
@@ -33,36 +33,18 @@ export class UsersService {
 	async create(
 		createUserDto: CreateUserDto,
 		user?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<UserResponse> {
-		const authenticatedUser = user
-			? await this.usersRepository.findOne({
-					where: { id: user.id },
-					select: { id: true, church_id: true },
-				})
-			: null;
+		const churchId = user?.churchId ?? createUserDto.church_id;
 
-		if (user && !authenticatedUser)
-			throw new ForbiddenException('Usuário autenticado não encontrado!');
-
-		const accessProfilePermissions = user
-			? (await this.accessProfileService.findOne(user.accessProfileId))
-					?.permissions?.[PermissionModule.USERS]
-			: undefined;
-		const userWithCurrentChurch = user
-			? { ...user, churchId: authenticatedUser?.church_id }
-			: undefined;
-		const churchId =
-			accessProfilePermissions?.scope === PermissionScope.OWN_CHURCH
-				? authenticatedUser?.church_id
-				: createUserDto.church_id;
-
-		await assertPermission(
-			this.accessProfileService,
-			userWithCurrentChurch,
+		assertPermission(
+			permissions,
+			user,
 			PermissionModule.USERS,
 			PermissionLevel.FULL,
-			createUserDto.church_id ?? churchId,
+			createUserDto.church_id,
 		);
+
 		const userWithSameEmail = await this.usersRepository.exists({
 			where: { email: createUserDto.email },
 		});
@@ -101,10 +83,11 @@ export class UsersService {
 	async findOne(
 		userId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<UserResponse | null> {
 		const user = await this.usersRepository.findOne({ where: { id: userId } });
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.USERS,
 			PermissionLevel.READ,
@@ -117,8 +100,9 @@ export class UsersService {
 	async findOneOrFail(
 		userId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<UserResponse> {
-		const user = await this.findOne(userId, authenticatedUser);
+		const user = await this.findOne(userId, authenticatedUser, permissions);
 
 		if (!user) throw new NotFoundException('Usuário não encontrado!');
 
@@ -146,20 +130,18 @@ export class UsersService {
 
 	async findAll(
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<UserResponse[]> {
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.USERS,
 			PermissionLevel.READ,
 		);
+
 		const permission =
-			authenticatedUser &&
-			(
-				await this.accessProfileService.findOne(
-					authenticatedUser.accessProfileId,
-				)
-			)?.permissions?.[PermissionModule.USERS];
+			authenticatedUser && permissions?.[PermissionModule.USERS];
+
 		const users = await this.usersRepository.find({
 			where:
 				permission?.scope === PermissionScope.OWN_CHURCH &&
@@ -187,10 +169,11 @@ export class UsersService {
 		userId: string,
 		updateUserDto: UpdateUserDto,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<UserResponse> {
 		const existingUser = await this.findOneOrFail(userId);
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.USERS,
 			PermissionLevel.FULL,
@@ -253,10 +236,11 @@ export class UsersService {
 	async inactiveUser(
 		userId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<void> {
 		const existingUser = await this.findOneOrFail(userId);
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.USERS,
 			PermissionLevel.FULL,

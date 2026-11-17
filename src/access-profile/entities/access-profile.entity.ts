@@ -31,7 +31,7 @@ export enum PermissionScope {
 	OWN_CHURCH = 'OWN_CHURCH',
 }
 
-type Permission = Record<PermissionModule, ModulePermission>;
+export type Permission = Record<PermissionModule, ModulePermission>;
 
 @Entity()
 export class AccessProfile {

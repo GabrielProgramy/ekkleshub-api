@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
-import { AccessProfile } from './entities/access-profile.entity';
+import { AccessProfile, Permission } from './entities/access-profile.entity';
 import { Not, Repository } from 'typeorm';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
@@ -25,9 +25,10 @@ export class AccessProfileService {
 	async create(
 		createAccessProfileDto: CreateAccessProfileDto,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<AccessProfile> {
-		await assertPermission(
-			this,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.ACCESS_PROFILES,
 			PermissionLevel.FULL,
@@ -47,9 +48,10 @@ export class AccessProfileService {
 
 	async findAll(
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<AccessProfile[]> {
-		await assertPermission(
-			this,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.ACCESS_PROFILES,
 			PermissionLevel.READ,
@@ -60,9 +62,10 @@ export class AccessProfileService {
 	async findOne(
 		accessProfileId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<AccessProfile | null> {
-		await assertPermission(
-			this,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.ACCESS_PROFILES,
 			PermissionLevel.READ,
@@ -77,10 +80,12 @@ export class AccessProfileService {
 	async findOneOrFail(
 		accessProfileId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<AccessProfile> {
 		const accessProfile = await this.findOne(
 			accessProfileId,
 			authenticatedUser,
+			permissions,
 		);
 
 		if (!accessProfile)
@@ -93,9 +98,10 @@ export class AccessProfileService {
 		accessProfileId: string,
 		{ name, permissions }: UpdateAccessProfileDto,
 		authenticatedUser?: AuthenticatedUser,
+		permissionsUser?: Permission,
 	): Promise<AccessProfile> {
-		await assertPermission(
-			this,
+		assertPermission(
+			permissionsUser,
 			authenticatedUser,
 			PermissionModule.ACCESS_PROFILES,
 			PermissionLevel.FULL,
@@ -134,9 +140,10 @@ export class AccessProfileService {
 	async deleteOne(
 		accessProfileId: string,
 		authenticatedUser?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<void> {
-		await assertPermission(
-			this,
+		assertPermission(
+			permissions,
 			authenticatedUser,
 			PermissionModule.ACCESS_PROFILES,
 			PermissionLevel.FULL,

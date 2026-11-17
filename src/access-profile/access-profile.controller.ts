@@ -10,11 +10,10 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { AccessProfileService } from './access-profile.service';
 import { CreateAccessProfileDto } from './dto/create-access-profile.dto';
 import { UpdateAccessProfileDto } from './dto/update-access-profile.dto';
+import type { AuthenticatedRequest } from 'src/auth/types/authenticated-user';
 
 @Controller('access-profile')
 export class AccessProfileController {
@@ -23,27 +22,32 @@ export class AccessProfileController {
 	@Post()
 	create(
 		@Body() createAccessProfileDto: CreateAccessProfileDto,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
 		return this.accessProfileService.create(
 			createAccessProfileDto,
 			request?.user,
+			request?.permissions,
 		);
 	}
 
 	@Get()
-	findAll(@Req() request?: Request & { user?: AuthenticatedUser }) {
-		return this.accessProfileService.findAll(request?.user);
+	findAll(@Req() request?: AuthenticatedRequest) {
+		return this.accessProfileService.findAll(
+			request?.user,
+			request?.permissions,
+		);
 	}
 
 	@Get(':id')
 	findOne(
 		@Param('id') accessProfileId: string,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
 		return this.accessProfileService.findOneOrFail(
 			accessProfileId,
 			request?.user,
+			request?.permissions,
 		);
 	}
 
@@ -51,12 +55,13 @@ export class AccessProfileController {
 	update(
 		@Param('id') accessProfileId: string,
 		@Body() updateDataDto: UpdateAccessProfileDto,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
 		return this.accessProfileService.update(
 			accessProfileId,
 			updateDataDto,
 			request?.user,
+			request?.permissions,
 		);
 	}
 
@@ -64,8 +69,12 @@ export class AccessProfileController {
 	@Delete(':id')
 	async deleteOne(
 		@Param('id') accessProfileId: string,
-		@Req() request?: Request & { user?: AuthenticatedUser },
+		@Req() request?: AuthenticatedRequest,
 	) {
-		await this.accessProfileService.deleteOne(accessProfileId, request?.user);
+		await this.accessProfileService.deleteOne(
+			accessProfileId,
+			request?.user,
+			request?.permissions,
+		);
 	}
 }

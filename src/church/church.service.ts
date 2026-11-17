@@ -15,6 +15,7 @@ import {
 	PermissionLevel,
 	PermissionModule,
 	PermissionScope,
+	Permission,
 } from '../access-profile/entities/access-profile.entity';
 
 @Injectable()
@@ -28,9 +29,10 @@ export class ChurchService {
 	async create(
 		createChurchDto: CreateChurchDto,
 		user?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<Church> {
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			user,
 			PermissionModule.CHURCHES,
 			PermissionLevel.FULL,
@@ -54,9 +56,12 @@ export class ChurchService {
 		return this.churchRepository.save(newChurchData);
 	}
 
-	async findAll(user?: AuthenticatedUser): Promise<Church[]> {
-		await assertPermission(
-			this.accessProfileService,
+	async findAll(
+		user?: AuthenticatedUser,
+		permissions?: Permission,
+	): Promise<Church[]> {
+		assertPermission(
+			permissions,
 			user,
 			PermissionModule.CHURCHES,
 			PermissionLevel.READ,
@@ -74,9 +79,13 @@ export class ChurchService {
 		return churches;
 	}
 
-	async findOne(id: string, user?: AuthenticatedUser): Promise<Church | null> {
-		await assertPermission(
-			this.accessProfileService,
+	async findOne(
+		id: string,
+		user?: AuthenticatedUser,
+		permissions?: Permission,
+	): Promise<Church | null> {
+		assertPermission(
+			permissions,
 			user,
 			PermissionModule.CHURCHES,
 			PermissionLevel.READ,
@@ -85,8 +94,12 @@ export class ChurchService {
 		return this.churchRepository.findOne({ where: { id } });
 	}
 
-	async findOneOrFail(id: string, user?: AuthenticatedUser): Promise<Church> {
-		const church = await this.findOne(id, user);
+	async findOneOrFail(
+		id: string,
+		user?: AuthenticatedUser,
+		permissions?: Permission,
+	): Promise<Church> {
+		const church = await this.findOne(id, user, permissions);
 
 		if (!church) throw new NotFoundException('Igreja não encontrada!');
 
@@ -97,9 +110,10 @@ export class ChurchService {
 		id: string,
 		updateChurchDto: UpdateChurchDto,
 		user?: AuthenticatedUser,
+		permissions?: Permission,
 	): Promise<Church> {
-		await assertPermission(
-			this.accessProfileService,
+		assertPermission(
+			permissions,
 			user,
 			PermissionModule.CHURCHES,
 			PermissionLevel.FULL,
@@ -112,9 +126,13 @@ export class ChurchService {
 		return this.churchRepository.save(existingChurch);
 	}
 
-	async close(id: string, user?: AuthenticatedUser): Promise<void> {
-		await assertPermission(
-			this.accessProfileService,
+	async close(
+		id: string,
+		user?: AuthenticatedUser,
+		permissions?: Permission,
+	): Promise<void> {
+		assertPermission(
+			permissions,
 			user,
 			PermissionModule.CHURCHES,
 			PermissionLevel.FULL,
